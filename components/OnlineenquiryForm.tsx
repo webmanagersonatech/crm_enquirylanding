@@ -1,4 +1,3 @@
-
 import { FormEvent, useState, useEffect } from "react";
 import Select from "react-select";
 import { Country, State, City } from "country-state-city";
@@ -7,12 +6,25 @@ import { getStudentSettings, getActiveInstitutions, createOnlineLead } from "@/l
 
 type Props = { instituteId?: string | null };
 
+type FormErrors = {
+    candidateName?: string;
+    email?: string;
+    phoneNumber?: string;
+    program?: string;
+    dateOfBirth?: string;
+    country?: string;
+    state?: string;
+    city?: string;
+};
+
 export default function OnlineEnquiryForm({ instituteId }: Props) {
     const [loading, setLoading] = useState(false);
     const [institutdata, setInstitutdata] = useState<any>(null);
     const [institutions, setInstitutions] = useState<any[]>([]);
     const [submitted, setSubmitted] = useState(false);
     const [formKey, setFormKey] = useState(0);
+    const [errors, setErrors] = useState<FormErrors>({});
+    const [touched, setTouched] = useState<{ [key: string]: boolean }>({});
 
 
     const [form, setForm] = useState({
@@ -29,7 +41,25 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
         followUpDate: new Date().toISOString().split("T")[0],
         description: "This lead enquiry has come from online",
     });
+    useEffect(() => {
+        const fetchCountry = async () => {
+            try {
+                const res = await fetch("https://ipapi.co/json/");
+                const data = await res.json();
 
+                if (data?.country_name) {
+                    setForm(prev => ({
+                        ...prev,
+                        country: data.country_name
+                    }));
+                }
+            } catch (err) {
+                console.log("Country auto-detect failed");
+            }
+        };
+
+        fetchCountry();
+    }, []);
 
     useEffect(() => {
         const init = async () => {
@@ -47,6 +77,7 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
     const MIN_AGE = institutdata?.applicantage || 18;
 
     const getAge = (dob: string) => {
+        if (!dob) return 0;
         const birthDate = new Date(dob);
         const today = new Date();
 
@@ -58,60 +89,114 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
         }
         return age;
     };
-    const validateForm = () => {
-        if (!form.candidateName.trim()) {
-            toast.error("Candidate Name is required");
-            return false;
-        }
 
-        if (!form.phoneNumber.trim()) {
-            toast.error("Phone Number is required");
-            return false;
-        }
+    // Validation function for individual fields
+    const validateField = (name: string, value: string): string | undefined => {
+        switch (name) {
+            case "candidateName":
+                if (!value.trim()) return "Candidate Name is required";
+                if (value.trim().length < 2) return "Name must be at least 2 characters";
+                if (!/^[a-zA-Z\s]+$/.test(value)) return "Name can only contain letters and spaces";
+                return undefined;
 
-        if (form.phoneNumber.length < 10) {
-            toast.error("Enter a valid Phone Number");
-            return false;
-        }
+            case "email":
+                if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+                    return "Please enter a valid email address";
+                }
+                return undefined;
 
-        if (!form.program) {
-            toast.error("Please select a Program");
-            return false;
-        }
+            case "phoneNumber":
+                if (!value) return "Phone Number is required";
+                if (value.length < 10) return "Phone Number must be 10 digits";
+                if (!/^\d{10}$/.test(value)) return "Please enter a valid 10-digit phone number";
+                return undefined;
 
-        if (!form.dateOfBirth) {
-            toast.error("Date of Birth is required");
-            return false;
-        }
+            case "program":
+                if (!value) return "Please select a Program";
+                return undefined;
 
-        const age = getAge(form.dateOfBirth);
-        if (age < MIN_AGE) {
-            toast.error(`Minimum age required is ${MIN_AGE} years`);
-            return false;
-        }
+            case "dateOfBirth":
+                if (!value) return "Date of Birth is required";
+                const age = getAge(value);
+                if (age < MIN_AGE) return `Minimum age required is ${MIN_AGE} years`;
+                if (age > 100) return "Please enter a valid date of birth";
+                return undefined;
 
-        if (!form.country) {
-            toast.error("Please select a Country");
-            return false;
-        }
+            case "country":
+                if (!value) return "Please select a Country";
+                return undefined;
 
-        if (!form.state) {
-            toast.error("Please select a State");
-            return false;
-        }
+            case "state":
+                if (!value) return "Please select a State";
+                return undefined;
 
-        if (!form.city) {
-            toast.error("Please select a City");
-            return false;
-        }
+            case "city":
+                if (!value) return "Please select a City";
+                return undefined;
 
-        return true;
+            default:
+                return undefined;
+        }
     };
 
+    // Validate entire form
+    const validateForm = (): boolean => {
+        const newErrors: FormErrors = {};
+
+        Object.keys(form).forEach(key => {
+            if (key in newErrors) return;
+            const error = validateField(key, form[key as keyof typeof form] as string);
+            if (error) {
+                newErrors[key as keyof FormErrors] = error;
+            }
+        });
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    // Handle field change with validation
+    const handleFieldChange = (field: string, value: string) => {
+        setForm(prev => ({ ...prev, [field]: value }));
+
+        // Mark field as touched
+        setTouched(prev => ({ ...prev, [field]: true }));
+
+        // Validate the changed field
+        const error = validateField(field, value);
+        setErrors(prev => ({
+            ...prev,
+            [field]: error
+        }));
+    };
+
+    // Handle blur to mark field as touched
+    const handleFieldBlur = (field: string) => {
+        setTouched(prev => ({ ...prev, [field]: true }));
+
+        // Validate on blur
+        const error = validateField(field, form[field as keyof typeof form] as string);
+        setErrors(prev => ({
+            ...prev,
+            [field]: error
+        }));
+    };
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
-        if (!validateForm()) return;
+
+        // Mark all fields as touched on submit
+        const allTouched = Object.keys(form).reduce((acc, key) => {
+            acc[key] = true;
+            return acc;
+        }, {} as { [key: string]: boolean });
+        setTouched(allTouched);
+
+        // Validate all fields
+        if (!validateForm()) {
+            toast.error("Please fix the errors in the form");
+            return;
+        }
 
         try {
             setLoading(true);
@@ -135,7 +220,6 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
 
             const res = await createOnlineLead(payload);
 
-            // Only 201 reaches here
             toast.success(res.message || "Enquiry submitted successfully.");
 
             setSubmitted(true);
@@ -153,6 +237,8 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
                 followUpDate: new Date().toISOString().split("T")[0],
                 description: "This lead enquiry has come from online",
             });
+            setErrors({});
+            setTouched({});
             setFormKey(prev => prev + 1);
 
             window.scrollTo({ top: 0, behavior: "smooth" });
@@ -162,13 +248,11 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
             const status = err.response?.status;
             const message = err.response?.data?.message || "Unable to submit enquiry";
 
-            // 🟡 Duplicate (409)
             if (status === 409) {
                 toast.error(message);
                 return;
             }
 
-            // 🔴 Validation / server errors
             toast.error(message);
 
         } finally {
@@ -176,10 +260,9 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
         }
     };
 
-
-
-
-
+    const showError = (fieldName: string): boolean => {
+        return !!(touched[fieldName] && errors[fieldName as keyof FormErrors]);
+    };
 
     return (
         <section className="min-h-screen bg-[#f5f7fb] flex items-center justify-center px-4">
@@ -243,10 +326,7 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
                                     <h1 className="text-lg font-semibold text-[#0b1c3d]">
                                         {institutdata.instituteName}
                                     </h1>
-                                    <span className="inline-flex items-center gap-2 text-sm text-gray-500">
-                                        <span className="h-1.5 w-1.5 rounded-full bg-green-500"></span>
-                                        Official Admission Enquiry Portal
-                                    </span>
+
                                 </div>
                             </div>
                         ) : (
@@ -262,124 +342,171 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
                         </h2>
 
                         {/* ---------- FORM ---------- */}
-                        <form onSubmit={handleSubmit} key={formKey} className="space-y-5 bg-white p-6 rounded-2xl shadow-md">
+                        <form onSubmit={handleSubmit} key={formKey} className="space-y-4 bg-white p-6 rounded-2xl shadow-md">
 
-                            <input
-                                placeholder="Candidate Full Name"
-                                value={form.candidateName}
-                                onChange={(e) => {
-                                    const value = e.target.value.replace(/[^a-zA-Z\s]/g, "");
-                                    setForm({ ...form, candidateName: value });
-                                }}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-xl"
-                            />
+                            {/* Candidate Name Field */}
+                            <div>
+                                <input
+                                    placeholder="Candidate Full Name"
+                                    value={form.candidateName}
+                                    onChange={(e) => {
+                                        const value = e.target.value.replace(/[^a-zA-Z\s]/g, "");
+                                        handleFieldChange("candidateName", value);
+                                    }}
+                                    onBlur={() => handleFieldBlur("candidateName")}
+                                    className={`w-full px-4 py-3 border ${showError("candidateName") ? "border-red-500" : "border-gray-300"} rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0b1c3d] focus:border-transparent transition`}
+                                />
+                                {showError("candidateName") && (
+                                    <p className="mt-1 text-sm text-red-500">{errors.candidateName}</p>
+                                )}
+                            </div>
 
-                            <input
-                                placeholder="Email Address (optional)"
-                                type="email"
-                                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0b1c3d] focus:border-transparent transition"
-                                value={form.email}
-                                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                            />
-                            <input
-                                placeholder="Phone Number"
-                                type="tel"
-                                value={form.phoneNumber}
-                                onChange={(e) => {
-                                    const value = e.target.value.replace(/\D/g, "").slice(0, 10);
-                                    setForm({ ...form, phoneNumber: value });
-                                }}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-xl"
-                            />
+                            {/* Email Field */}
+                            <div>
+                                <input
+                                    placeholder="Email Address (optional)"
+                                    type="email"
+                                    className={`w-full px-4 py-3 border ${showError("email") ? "border-red-500" : "border-gray-300"} rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0b1c3d] focus:border-transparent transition`}
+                                    value={form.email}
+                                    onChange={(e) => handleFieldChange("email", e.target.value)}
+                                    onBlur={() => handleFieldBlur("email")}
+                                />
+                                {showError("email") && (
+                                    <p className="mt-1 text-sm text-red-500">{errors.email}</p>
+                                )}
+                            </div>
 
+                            {/* Phone Number Field */}
+                            <div>
+                                <input
+                                    placeholder="Phone Number"
+                                    type="tel"
+                                    value={form.phoneNumber}
+                                    onChange={(e) => {
+                                        const value = e.target.value.replace(/\D/g, "").slice(0, 10);
+                                        handleFieldChange("phoneNumber", value);
+                                    }}
+                                    onBlur={() => handleFieldBlur("phoneNumber")}
+                                    className={`w-full px-4 py-3 border ${showError("phoneNumber") ? "border-red-500" : "border-gray-300"} rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0b1c3d] focus:border-transparent transition`}
+                                />
+                                {showError("phoneNumber") && (
+                                    <p className="mt-1 text-sm text-red-500">{errors.phoneNumber}</p>
+                                )}
+                            </div>
 
-                            {/* Program */}
-                            <Select
-                                styles={selectRoyalStyles}
-                                placeholder="Select Program"
-                                value={
-                                    form.program
-                                        ? { label: form.program.toUpperCase(), value: form.program }
-                                        : null
-                                }
-                                options={institutdata?.courses?.map((c: string) => ({
-                                    label: c.toUpperCase(),
-                                    value: c,
-                                }))}
-                                onChange={(opt: any) =>
-                                    setForm({ ...form, program: opt?.value || "" })
-                                }
-                            />
+                            {/* Program Field */}
+                            <div>
+                                <Select
+                                    styles={selectRoyalStyles(showError("program"))}
+                                    placeholder="Select Program"
+                                    value={
+                                        form.program
+                                            ? { label: form.program.toUpperCase(), value: form.program }
+                                            : null
+                                    }
+                                    options={institutdata?.courses?.map((c: string) => ({
+                                        label: c.toUpperCase(),
+                                        value: c,
+                                    }))}
+                                    onChange={(opt: any) => {
+                                        handleFieldChange("program", opt?.value || "");
+                                    }}
+                                    onBlur={() => handleFieldBlur("program")}
+                                />
+                                {showError("program") && (
+                                    <p className="mt-1 text-sm text-red-500">{errors.program}</p>
+                                )}
+                            </div>
 
-
-                            {/* DOB */}
-                            <input
-                                placeholder="Date of Birth"
-                                type="text"
-                                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0b1c3d] focus:border-transparent transition"
-                                value={form.dateOfBirth}
-                                onFocus={(e) => (e.target.type = "date")}
-                                onBlur={(e) => { if (!e.target.value) e.target.type = "text"; }}
-                                onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })}
-                            />
+                            {/* DOB Field */}
+                            <div>
+                                <input
+                                    type="date"
+                                    placeholder="Date of Birth"
+                                    className={`w-full px-4 py-3 border ${showError("dateOfBirth") ? "border-red-500" : "border-gray-300"
+                                        } rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0b1c3d] focus:border-transparent transition`}
+                                    value={form.dateOfBirth}
+                                    max={new Date().toISOString().split("T")[0]} // prevent future dates
+                                    onChange={(e) => handleFieldChange("dateOfBirth", e.target.value)}
+                                    onBlur={() => handleFieldBlur("dateOfBirth")}
+                                />
+                                {showError("dateOfBirth") && (
+                                    <p className="mt-1 text-sm text-red-500">{errors.dateOfBirth}</p>
+                                )}
+                            </div>
 
                             {/* Country / State / City */}
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {/* Country */}
+                                <div>
+                                    <Select
+                                        styles={selectRoyalStyles(showError("country"))}
+                                        placeholder="Country"
+                                        value={form.country ? { label: form.country, value: form.country } : null}
+                                        options={Country.getAllCountries().map(c => ({
+                                            label: c.name,
+                                            value: c.name,
+                                        }))}
+                                        onChange={(opt: any) => {
+                                            handleFieldChange("country", opt?.value || "");
+                                            handleFieldChange("state", "");
+                                            handleFieldChange("city", "");
+                                        }}
+                                        onBlur={() => handleFieldBlur("country")}
+                                    />
+                                    {showError("country") && (
+                                        <p className="mt-1 text-sm text-red-500">{errors.country}</p>
+                                    )}
+                                </div>
 
-                                <Select
-                                    styles={selectRoyalStyles}
-                                    placeholder="Country"
-                                    value={form.country ? { label: form.country, value: form.country } : null}
-                                    options={Country.getAllCountries().map(c => ({
-                                        label: c.name,
-                                        value: c.name,
-                                    }))}
-                                    onChange={(opt: any) =>
-                                        setForm({ ...form, country: opt?.value || "", state: "", city: "" })
-                                    }
-                                />
-
-
-                                <Select
-                                    styles={selectRoyalStyles}
-                                    placeholder="State"
-                                    isDisabled={!form.country}
-                                    value={form.state ? { label: form.state, value: form.state } : null}
-                                    options={State.getStatesOfCountry(
-                                        Country.getAllCountries().find(c => c.name === form.country)?.isoCode || ""
-                                    ).map(s => ({ label: s.name, value: s.name }))}
-                                    onChange={(opt: any) =>
-                                        setForm({ ...form, state: opt?.value || "", city: "" })
-                                    }
-                                />
-
-
-
-                                <Select
-                                    styles={selectRoyalStyles}
-                                    placeholder="City"
-                                    isDisabled={!form.state}
-                                    value={form.city ? { label: form.city, value: form.city } : null}
-                                    options={City.getCitiesOfState(
-                                        Country.getAllCountries().find(c => c.name === form.country)?.isoCode || "",
-                                        State.getStatesOfCountry(
+                                {/* State */}
+                                <div>
+                                    <Select
+                                        styles={selectRoyalStyles(showError("state"))}
+                                        placeholder="State"
+                                        isDisabled={!form.country}
+                                        value={form.state ? { label: form.state, value: form.state } : null}
+                                        options={State.getStatesOfCountry(
                                             Country.getAllCountries().find(c => c.name === form.country)?.isoCode || ""
-                                        ).find(s => s.name === form.state)?.isoCode || ""
-                                    ).map(c => ({ label: c.name, value: c.name }))}
-                                    onChange={(opt: any) =>
-                                        setForm({ ...form, city: opt?.value || "" })
-                                    }
-                                />
+                                        ).map(s => ({ label: s.name, value: s.name }))}
+                                        onChange={(opt: any) => {
+                                            handleFieldChange("state", opt?.value || "");
+                                            handleFieldChange("city", "");
+                                        }}
+                                        onBlur={() => handleFieldBlur("state")}
+                                    />
+                                    {showError("state") && (
+                                        <p className="mt-1 text-sm text-red-500">{errors.state}</p>
+                                    )}
+                                </div>
 
-
+                                {/* City */}
+                                <div>
+                                    <Select
+                                        styles={selectRoyalStyles(showError("city"))}
+                                        placeholder="City"
+                                        isDisabled={!form.state}
+                                        value={form.city ? { label: form.city, value: form.city } : null}
+                                        options={City.getCitiesOfState(
+                                            Country.getAllCountries().find(c => c.name === form.country)?.isoCode || "",
+                                            State.getStatesOfCountry(
+                                                Country.getAllCountries().find(c => c.name === form.country)?.isoCode || ""
+                                            ).find(s => s.name === form.state)?.isoCode || ""
+                                        ).map(c => ({ label: c.name, value: c.name }))}
+                                        onChange={(opt: any) => handleFieldChange("city", opt?.value || "")}
+                                        onBlur={() => handleFieldBlur("city")}
+                                    />
+                                    {showError("city") && (
+                                        <p className="mt-1 text-sm text-red-500">{errors.city}</p>
+                                    )}
+                                </div>
                             </div>
-
 
                             {/* Submit Button */}
                             <button
                                 type="submit"
                                 disabled={loading || submitted}
-                                className="w-full bg-[#0b1c3d] disabled:opacity-60 text-white py-3 rounded-xl"
+                                className="w-full bg-[#0b1c3d] disabled:opacity-60 text-white py-3 rounded-xl hover:bg-[#0b1c3d]/90 transition"
                             >
                                 {loading ? "Submitting..." : submitted ? "Submitted ✓" : "Submit Enquiry"}
                             </button>
@@ -402,6 +529,7 @@ function Feature({ text }: { text: string }) {
         </div>
     );
 }
+
 function Stat({ value, label }: { value: string; label: string }) {
     return (
         <div>
@@ -412,13 +540,13 @@ function Stat({ value, label }: { value: string; label: string }) {
 }
 
 /* ---------------- SELECT STYLES ---------------- */
-const selectRoyalStyles = {
+const selectRoyalStyles = (hasError?: boolean) => ({
     control: (base: any) => ({
         ...base,
         borderRadius: "12px",
         minHeight: "46px",
-        borderColor: "#cbd5e1",
+        borderColor: hasError ? "#ef4444" : "#cbd5e1",
         boxShadow: "none",
-        ":hover": { borderColor: "#0b1c3d" },
+        ":hover": { borderColor: hasError ? "#ef4444" : "#0b1c3d" },
     }),
-};
+});
