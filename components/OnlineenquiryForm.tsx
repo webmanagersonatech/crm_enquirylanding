@@ -36,9 +36,9 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
     const generateCaptcha = () => {
         const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // Excluding I and O to avoid confusion
         const numbers = "23456789"; // Excluding 0 and 1 to avoid confusion with O and I
-        
+
         let result = "";
-        
+
         // Generate 6 character CAPTCHA (alternating letters and numbers)
         for (let i = 0; i < 6; i++) {
             if (i % 2 === 0) {
@@ -49,7 +49,7 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
                 result += numbers[Math.floor(Math.random() * numbers.length)];
             }
         }
-        
+
         setCaptchaText(result);
         setCaptchaInput("");
         setCaptchaError("");
@@ -82,7 +82,7 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
         followUpDate: new Date().toISOString().split("T")[0],
         description: "This lead enquiry has come from online",
     });
-    
+
     useEffect(() => {
         const fetchCountry = async () => {
             try {
@@ -291,7 +291,7 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
             setErrors({});
             setTouched({});
             setFormKey(prev => prev + 1);
-            
+
             // Generate new CAPTCHA after successful submission
             generateCaptcha();
 
@@ -370,6 +370,7 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
                         {institutdata ? (
                             <div className="flex items-center gap-4 mb-6 pb-5 border-b border-gray-200">
                                 <div className="flex-shrink-0">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img
                                         src={institutdata.logo}
                                         alt={`${institutdata.instituteName} Logo`}
@@ -561,16 +562,16 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Verification <span className="text-red-500">*</span>
                                 </label>
-                                
+
                                 {/* CAPTCHA Image Simulation */}
                                 <div className="flex items-center gap-3 mb-3">
                                     <div className="bg-gradient-to-r from-[#0b1c3d] to-[#1a2b4d] p-4 rounded-xl shadow-lg min-w-[180px]">
                                         <div className="flex items-center justify-center gap-1 text-3xl font-mono font-bold tracking-wider text-white">
                                             {captchaText.split('').map((char, index) => (
-                                                <span 
+                                                <span
                                                     key={index}
                                                     className={`
-                                                        ${index % 2 === 0 
+                                                        ${index % 2 === 0
                                                             ? 'text-yellow-400'  // Letters in yellow
                                                             : 'text-white'       // Numbers in white
                                                         } 
@@ -586,7 +587,7 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
                                             Enter the code above
                                         </div>
                                     </div>
-                                    
+
                                     {/* Refresh Button */}
                                     <button
                                         type="button"
@@ -599,7 +600,7 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
                                         </svg>
                                     </button>
                                 </div>
-                                
+
                                 {/* CAPTCHA Input */}
                                 <div>
                                     <input
@@ -616,12 +617,12 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
                                         maxLength={6}
                                     />
                                 </div>
-                                
+
                                 {/* CAPTCHA Error Message */}
                                 {captchaError && (
                                     <p className="mt-1 text-sm text-red-500">{captchaError}</p>
                                 )}
-                                
+
                                 <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
