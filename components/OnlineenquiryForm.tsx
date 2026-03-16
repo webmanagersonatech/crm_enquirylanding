@@ -15,6 +15,7 @@ type FormErrors = {
     country?: string;
     state?: string;
     city?: string;
+    captcha?: string;
 };
 
 export default function OnlineEnquiryForm({ instituteId }: Props) {
@@ -26,6 +27,46 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
     const [errors, setErrors] = useState<FormErrors>({});
     const [touched, setTouched] = useState<{ [key: string]: boolean }>({});
 
+    // CAPTCHA states
+    const [captchaText, setCaptchaText] = useState("");
+    const [captchaInput, setCaptchaInput] = useState("");
+    const [captchaError, setCaptchaError] = useState("");
+
+    // Generate random CAPTCHA (mix of letters and numbers)
+    const generateCaptcha = () => {
+        const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // Excluding I and O to avoid confusion
+        const numbers = "23456789"; // Excluding 0 and 1 to avoid confusion with O and I
+        
+        let result = "";
+        
+        // Generate 6 character CAPTCHA (alternating letters and numbers)
+        for (let i = 0; i < 6; i++) {
+            if (i % 2 === 0) {
+                // Add a random letter
+                result += letters[Math.floor(Math.random() * letters.length)];
+            } else {
+                // Add a random number
+                result += numbers[Math.floor(Math.random() * numbers.length)];
+            }
+        }
+        
+        setCaptchaText(result);
+        setCaptchaInput("");
+        setCaptchaError("");
+    };
+
+    useEffect(() => {
+        generateCaptcha();
+    }, []);
+
+    const validateCaptcha = (): boolean => {
+        if (captchaInput.toUpperCase() !== captchaText) {
+            setCaptchaError("Incorrect CAPTCHA. Please try again.");
+            return false;
+        }
+        setCaptchaError("");
+        return true;
+    };
 
     const [form, setForm] = useState({
         candidateName: "",
@@ -41,6 +82,7 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
         followUpDate: new Date().toISOString().split("T")[0],
         description: "This lead enquiry has come from online",
     });
+    
     useEffect(() => {
         const fetchCountry = async () => {
             try {
@@ -109,6 +151,8 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
                 if (!value) return "Phone Number is required";
                 if (value.length < 10) return "Phone Number must be 10 digits";
                 if (!/^\d{10}$/.test(value)) return "Please enter a valid 10-digit phone number";
+                // Check if first digit is 6,7,8, or 9
+                if (!/^[6-9]/.test(value)) return "Phone number must start with 6, 7, 8, or 9";
                 return undefined;
 
             case "program":
@@ -185,6 +229,13 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
 
+        // Validate CAPTCHA first (frontend only)
+        if (!validateCaptcha()) {
+            toast.error("Please enter the correct CAPTCHA");
+            generateCaptcha(); // Generate new CAPTCHA on failure
+            return;
+        }
+
         // Mark all fields as touched on submit
         const allTouched = Object.keys(form).reduce((acc, key) => {
             acc[key] = true;
@@ -240,6 +291,9 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
             setErrors({});
             setTouched({});
             setFormKey(prev => prev + 1);
+            
+            // Generate new CAPTCHA after successful submission
+            generateCaptcha();
 
             window.scrollTo({ top: 0, behavior: "smooth" });
             setTimeout(() => setSubmitted(false), 3000);
@@ -500,6 +554,80 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
                                         <p className="mt-1 text-sm text-red-500">{errors.city}</p>
                                     )}
                                 </div>
+                            </div>
+
+                            {/* CAPTCHA Field - Character & Number Type with Image Style */}
+                            <div className="border border-gray-200 rounded-xl p-4 bg-gray-50">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Verification <span className="text-red-500">*</span>
+                                </label>
+                                
+                                {/* CAPTCHA Image Simulation */}
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="bg-gradient-to-r from-[#0b1c3d] to-[#1a2b4d] p-4 rounded-xl shadow-lg min-w-[180px]">
+                                        <div className="flex items-center justify-center gap-1 text-3xl font-mono font-bold tracking-wider text-white">
+                                            {captchaText.split('').map((char, index) => (
+                                                <span 
+                                                    key={index}
+                                                    className={`
+                                                        ${index % 2 === 0 
+                                                            ? 'text-yellow-400'  // Letters in yellow
+                                                            : 'text-white'       // Numbers in white
+                                                        } 
+                                                        ${Math.random() > 0.5 ? 'rotate-3' : '-rotate-3'} 
+                                                        inline-block transform
+                                                    `}
+                                                >
+                                                    {char}
+                                                </span>
+                                            ))}
+                                        </div>
+                                        <div className="text-center mt-2 text-xs text-gray-300 bg-black/20 py-1 rounded">
+                                            Enter the code above
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Refresh Button */}
+                                    <button
+                                        type="button"
+                                        onClick={generateCaptcha}
+                                        className="p-2 bg-gray-200 hover:bg-gray-300 rounded-full transition"
+                                        title="New CAPTCHA"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                        </svg>
+                                    </button>
+                                </div>
+                                
+                                {/* CAPTCHA Input */}
+                                <div>
+                                    <input
+                                        type="text"
+                                        placeholder="Enter characters & numbers (case insensitive)"
+                                        value={captchaInput}
+                                        onChange={(e) => {
+                                            // Allow alphanumeric only
+                                            const value = e.target.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+                                            setCaptchaInput(value);
+                                            if (captchaError) setCaptchaError("");
+                                        }}
+                                        className={`w-full px-4 py-2 border ${captchaError ? "border-red-500" : "border-gray-300"} rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0b1c3d] focus:border-transparent transition`}
+                                        maxLength={6}
+                                    />
+                                </div>
+                                
+                                {/* CAPTCHA Error Message */}
+                                {captchaError && (
+                                    <p className="mt-1 text-sm text-red-500">{captchaError}</p>
+                                )}
+                                
+                                <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Enter the 6-character code shown above (letters and numbers)
+                                </p>
                             </div>
 
                             {/* Submit Button */}
