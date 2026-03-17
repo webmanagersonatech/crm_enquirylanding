@@ -73,7 +73,6 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
         email: "",
         phoneNumber: "",
         program: "",
-        dateOfBirth: "", // will convert to date string before sending
         country: "",
         state: "",
         city: "",
@@ -157,13 +156,6 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
 
             case "program":
                 if (!value) return "Please select a Program";
-                return undefined;
-
-            case "dateOfBirth":
-                if (!value) return "Date of Birth is required";
-                const age = getAge(value);
-                if (age < MIN_AGE) return `Minimum age required is ${MIN_AGE} years`;
-                if (age > 100) return "Please enter a valid date of birth";
                 return undefined;
 
             case "country":
@@ -258,7 +250,6 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
                 candidateName: form.candidateName,
                 phoneNumber: form.phoneNumber || "",
                 email: form.email || "",
-                dateOfBirth: form.dateOfBirth || "",
                 country: form.country || "",
                 state: form.state || "",
                 city: form.city || "",
@@ -279,7 +270,7 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
                 email: "",
                 phoneNumber: "",
                 program: "",
-                dateOfBirth: "",
+              
                 country: "",
                 state: "",
                 city: "",
@@ -473,22 +464,7 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
                                 )}
                             </div>
 
-                            {/* DOB Field */}
-                            <div>
-                                <input
-                                    type="date"
-                                    placeholder="Date of Birth"
-                                    className={`w-full px-4 py-3 border ${showError("dateOfBirth") ? "border-red-500" : "border-gray-300"
-                                        } rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0b1c3d] focus:border-transparent transition`}
-                                    value={form.dateOfBirth}
-                                    max={new Date().toISOString().split("T")[0]} // prevent future dates
-                                    onChange={(e) => handleFieldChange("dateOfBirth", e.target.value)}
-                                    onBlur={() => handleFieldBlur("dateOfBirth")}
-                                />
-                                {showError("dateOfBirth") && (
-                                    <p className="mt-1 text-sm text-red-500">{errors.dateOfBirth}</p>
-                                )}
-                            </div>
+                       
 
                             {/* Country / State / City */}
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
