@@ -23,8 +23,9 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
         "Set-Cookie",
         serialize("instituteId", instituteId, {
             httpOnly: true,
-            secure: isProd,                // ✅ HTTPS only in production
-            sameSite: "lax",               // ✅ Works for redirect flow
+            secure: isProd,
+            sameSite: isProd ? "none" : "lax",
+            domain: ".sonastar.com", // 🔥 MUST match always
             path: "/",
             maxAge: 60 * 60 * 24 * 7,
         })
