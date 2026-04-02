@@ -2,7 +2,7 @@ import axios from "axios";
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 export type EnquiryPayload = {
   instituteId: string;          // required
-  program: string;              // required
+  programId: string;              // required
   candidateName: string;        // required
   phoneNumber?: string;         // optional
   email?: string;               // optional

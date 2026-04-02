@@ -10,7 +10,7 @@ type FormErrors = {
     candidateName?: string;
     email?: string;
     phoneNumber?: string;
-    program?: string;
+    programId?: string;
     dateOfBirth?: string;
     country?: string;
     state?: string;
@@ -72,7 +72,7 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
         candidateName: "",
         email: "",
         phoneNumber: "",
-        program: "",
+        programId: "",
         country: "",
         state: "",
         city: "",
@@ -154,7 +154,7 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
                 if (!/^[6-9]/.test(value)) return "Phone number must start with 6, 7, 8, or 9";
                 return undefined;
 
-            case "program":
+            case "programId":
                 if (!value) return "Please select a Program";
                 return undefined;
 
@@ -246,7 +246,7 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
 
             const payload = {
                 instituteId: instituteId!,
-                program: form.program,
+                programId: form.programId,
                 candidateName: form.candidateName,
                 phoneNumber: form.phoneNumber || "",
                 email: form.email || "",
@@ -269,8 +269,8 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
                 candidateName: "",
                 email: "",
                 phoneNumber: "",
-                program: "",
-              
+                programId: "",
+
                 country: "",
                 state: "",
                 city: "",
@@ -443,28 +443,39 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
                             {/* Program Field */}
                             <div>
                                 <Select
-                                    styles={selectRoyalStyles(showError("program"))}
+                                    styles={selectRoyalStyles(showError("programId"))}
                                     placeholder="Select Program"
+
                                     value={
-                                        form.program
-                                            ? { label: form.program.toUpperCase(), value: form.program }
+                                        form.programId
+                                            ? {
+                                                label:
+                                                    institutdata?.courses?.find(
+                                                        (c: any) => c.courseId === form.programId
+                                                    )?.name?.toUpperCase() || "",
+                                                value: form.programId,
+                                            }
                                             : null
                                     }
-                                    options={institutdata?.courses?.map((c: string) => ({
-                                        label: c.toUpperCase(),
-                                        value: c,
+
+                                    options={institutdata?.courses?.map((c: any) => ({
+                                        label: c.name.toUpperCase(),   // ✅ show course name
+                                        value: c.courseId,             // ✅ send only courseId
                                     }))}
+
                                     onChange={(opt: any) => {
-                                        handleFieldChange("program", opt?.value || "");
+                                        handleFieldChange("programId", opt?.value || "");
                                     }}
-                                    onBlur={() => handleFieldBlur("program")}
+
+                                    onBlur={() => handleFieldBlur("programId")}
                                 />
-                                {showError("program") && (
-                                    <p className="mt-1 text-sm text-red-500">{errors.program}</p>
+
+                                {showError("programId") && (
+                                    <p className="mt-1 text-sm text-red-500">{errors.programId}</p>
                                 )}
                             </div>
 
-                       
+
 
                             {/* Country / State / City */}
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
