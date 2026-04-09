@@ -10,6 +10,7 @@ type FormErrors = {
     candidateName?: string;
     email?: string;
     phoneNumber?: string;
+    community?: string;
     programId?: string;
     dateOfBirth?: string;
     country?: string;
@@ -34,8 +35,8 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
 
     // Generate random CAPTCHA (mix of letters and numbers)
     const generateCaptcha = () => {
-        const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // Excluding I and O to avoid confusion
-        const numbers = "23456789"; // Excluding 0 and 1 to avoid confusion with O and I
+        const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+        const numbers = "23456789";
 
         let result = "";
 
@@ -72,6 +73,7 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
         candidateName: "",
         email: "",
         phoneNumber: "",
+        community: "",
         programId: "",
         country: "",
         state: "",
@@ -162,6 +164,12 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
                 if (!value) return "Please select a Country";
                 return undefined;
 
+            case "community":
+                if (instituteId === "INS-ZFBTTF5P" && !value) {
+                    return "Please select Community";
+                }
+                return undefined;
+
             case "state":
                 if (!value) return "Please select a State";
                 return undefined;
@@ -205,7 +213,15 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
             [field]: error
         }));
     };
-
+    const COMMUNITY_OPTIONS = [
+        { label: "OC", value: "OC" },
+        { label: "BC", value: "BC" },
+        { label: "BCM", value: "BCM" },
+        { label: "MBC / DNC", value: "MBC_DNC" },
+        { label: "SC", value: "SC" },
+        { label: "SCA", value: "SCA" },
+        { label: "ST", value: "ST" },
+    ];
     // Handle blur to mark field as touched
     const handleFieldBlur = (field: string) => {
         setTouched(prev => ({ ...prev, [field]: true }));
@@ -249,6 +265,7 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
                 programId: form.programId,
                 candidateName: form.candidateName,
                 phoneNumber: form.phoneNumber || "",
+
                 email: form.email || "",
                 country: form.country || "",
                 state: form.state || "",
@@ -258,6 +275,9 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
                 followUpDate: form.followUpDate || new Date().toISOString().split("T")[0],
                 description: form.description || "This lead enquiry has come from online",
                 leadSource: "online",
+                ...(instituteId === "INS-ZFBTTF5P" && {
+                    community: form.community || ""
+                })
             };
 
             const res = await createOnlineLead(payload);
@@ -270,7 +290,7 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
                 email: "",
                 phoneNumber: "",
                 programId: "",
-
+                community: "",
                 country: "",
                 state: "",
                 city: "",
@@ -439,6 +459,29 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
                                     <p className="mt-1 text-sm text-red-500">{errors.phoneNumber}</p>
                                 )}
                             </div>
+
+                            {instituteId === "INS-ZFBTTF5P" && (
+                                <div>
+                                    <Select
+                                        styles={selectRoyalStyles(showError("community"))}
+                                        placeholder="Select Community"
+                                        value={
+                                            form.community
+                                                ? COMMUNITY_OPTIONS.find(c => c.value === form.community)
+                                                : null
+                                        }
+                                        options={COMMUNITY_OPTIONS}
+                                        onChange={(opt: any) => {
+                                            handleFieldChange("community", opt?.value || "");
+                                        }}
+                                        onBlur={() => handleFieldBlur("community")}
+                                    />
+
+                                    {showError("community") && (
+                                        <p className="mt-1 text-sm text-red-500">{errors.community}</p>
+                                    )}
+                                </div>
+                            )}
 
                             {/* Program Field */}
                             <div>
