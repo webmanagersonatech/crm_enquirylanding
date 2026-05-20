@@ -3,6 +3,7 @@ import Select from "react-select";
 import { Country, State, City } from "country-state-city";
 import { toast } from "sonner";
 import { getStudentSettings, getActiveInstitutions, createOnlineLead } from "@/lib/api";
+import { useRouter } from "next/router";
 
 type Props = { instituteId?: string | null };
 
@@ -19,7 +20,10 @@ type FormErrors = {
     captcha?: string;
 };
 
+
 export default function OnlineEnquiryForm({ instituteId }: Props) {
+    const router = useRouter();
+    const source = router.query.source as string;
     const [loading, setLoading] = useState(false);
     const [institutdata, setInstitutdata] = useState<any>(null);
     const [institutions, setInstitutions] = useState<any[]>([]);
@@ -275,6 +279,9 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
                 followUpDate: form.followUpDate || new Date().toISOString().split("T")[0],
                 description: form.description || "This lead enquiry has come from online",
                 leadSource: "online",
+                ...(source && {
+                    medium: source
+                }),
                 ...(instituteId === "INS-ZFBTTF5P" && {
                     community: form.community || ""
                 })

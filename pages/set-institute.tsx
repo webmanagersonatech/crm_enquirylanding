@@ -6,6 +6,7 @@ export default function SetInstitute() {
 }
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
+    const source = context.query.source as string;
     const instituteId = context.query.instituteId as string;
 
     if (!instituteId) {
@@ -33,7 +34,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
 
     return {
         redirect: {
-            destination: "/",
+            destination: source ? `/?source=${source}` : "/",
             permanent: false,
         },
     };

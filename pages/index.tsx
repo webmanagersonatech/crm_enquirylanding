@@ -9,7 +9,7 @@ type Props = {
 
 
 export default function LoginPage({ instituteId }: Props) {
-  console.log(instituteId,"instituteIdxxx")
+
   return (
     <div >
       <OnlineEnquiryForm instituteId={instituteId} />
