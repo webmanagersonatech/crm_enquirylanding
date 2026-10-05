@@ -238,6 +238,31 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
         }));
     };
 
+    // FIX 1: Reset a dependent field (State/City) without flagging it as an error
+    const resetField = (field: string) => {
+        setForm(prev => ({ ...prev, [field]: "" }));
+        setTouched(prev => ({ ...prev, [field]: false }));
+        setErrors(prev => ({ ...prev, [field]: undefined }));
+    };
+
+    // FIX 2: Keep errors of touched fields in sync with the CURRENT form values,
+    // so stale red errors clear as soon as the field becomes valid
+    useEffect(() => {
+        setErrors(prev => {
+            const next: FormErrors = { ...prev };
+            Object.keys(touched).forEach(key => {
+                if (touched[key]) {
+                    next[key as keyof FormErrors] = validateField(
+                        key,
+                        (form as any)[key] ?? ""
+                    );
+                }
+            });
+            return next;
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [form, touched]);
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
 
@@ -541,8 +566,8 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
                                         }))}
                                         onChange={(opt: any) => {
                                             handleFieldChange("country", opt?.value || "");
-                                            handleFieldChange("state", "");
-                                            handleFieldChange("city", "");
+                                            resetField("state");
+                                            resetField("city");
                                         }}
                                         onBlur={() => handleFieldBlur("country")}
                                     />
@@ -563,7 +588,7 @@ export default function OnlineEnquiryForm({ instituteId }: Props) {
                                         ).map(s => ({ label: s.name, value: s.name }))}
                                         onChange={(opt: any) => {
                                             handleFieldChange("state", opt?.value || "");
-                                            handleFieldChange("city", "");
+                                            resetField("city");
                                         }}
                                         onBlur={() => handleFieldBlur("state")}
                                     />
